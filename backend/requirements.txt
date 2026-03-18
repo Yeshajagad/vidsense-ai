@@ -5,7 +5,7 @@ aiofiles==23.2.1
 langgraph==0.1.19
 langchain==0.2.6
 langchain-google-genai==1.0.6
-google-generativeai==0.7.2
+google-generativeai==0.5.4
 moviepy==1.0.3
 opencv-python-headless==4.10.0.84
 ultralytics==8.2.50
