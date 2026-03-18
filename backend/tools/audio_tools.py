@@ -1,24 +1,37 @@
-import whisper
+from faster_whisper import WhisperModel
 import os
-from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
+import subprocess
+from moviepy.editor import VideoFileClip, AudioFileClip
 from pydub import AudioSegment, generators
 
 def transcribe_video(input_path: str):
-    model = whisper.load_model("base")
-    result = model.transcribe(input_path)
-    return result
+    model = WhisperModel("base", device="cpu", compute_type="int8")
+    segments, info = model.transcribe(input_path, word_timestamps=True)
+    
+    result_segments = []
+    for seg in segments:
+        words = []
+        if hasattr(seg, 'words') and seg.words:
+            for w in seg.words:
+                words.append({"word": w.word, "start": w.start, "end": w.end})
+        result_segments.append({
+            "start": seg.start,
+            "end": seg.end,
+            "text": seg.text,
+            "words": words
+        })
+    return {"segments": result_segments}
 
 def add_captions(input_path: str, output_path: str):
-    import subprocess
     result = transcribe_video(input_path)
     segments = result.get("segments", [])
 
-    srt_path = input_path.replace(".mp4", ".srt").replace(".mov", ".srt")
+    srt_path = input_path.rsplit(".", 1)[0] + ".srt"
     with open(srt_path, "w") as f:
         for i, seg in enumerate(segments):
             start = _format_time(seg["start"])
-            end = _format_time(seg["end"])
-            text = seg["text"].strip()
+            end   = _format_time(seg["end"])
+            text  = seg["text"].strip()
             f.write(f"{i+1}\n{start} --> {end}\n{text}\n\n")
 
     cmd = [
@@ -45,9 +58,8 @@ def censor_word(input_path: str, output_path: str, word: str):
         return output_path
 
     clip = VideoFileClip(input_path)
-    audio = clip.audio
-    audio_path = input_path.replace(".mp4", "_audio.wav")
-    audio.write_audiofile(audio_path, logger=None)
+    audio_path = input_path.rsplit(".", 1)[0] + "_audio.wav"
+    clip.audio.write_audiofile(audio_path, logger=None)
 
     sound = AudioSegment.from_wav(audio_path)
     for start, end in censor_times:
@@ -56,18 +68,18 @@ def censor_word(input_path: str, output_path: str, word: str):
         start_ms = int(start * 1000)
         sound = sound[:start_ms] + beep + sound[start_ms + duration_ms:]
 
-    censored_audio_path = input_path.replace(".mp4", "_censored.wav")
-    sound.export(censored_audio_path, format="wav")
+    censored_path = input_path.rsplit(".", 1)[0] + "_censored.wav"
+    sound.export(censored_path, format="wav")
 
-    new_audio = AudioFileClip(censored_audio_path)
+    new_audio = AudioFileClip(censored_path)
     final = clip.set_audio(new_audio)
     final.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
     clip.close()
     return output_path
 
 def _format_time(seconds: float) -> str:
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
+    h  = int(seconds // 3600)
+    m  = int((seconds % 3600) // 60)
+    s  = int(seconds % 60)
     ms = int((seconds - int(seconds)) * 1000)
     return f"{h:02}:{m:02}:{s:02},{ms:03}"

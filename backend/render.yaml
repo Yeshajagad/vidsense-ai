@@ -2,7 +2,8 @@ services:
   - type: web
     name: vidsense-ai-backend
     runtime: python
-    buildCommand: "pip install -r requirements.txt"
+    pythonVersion: "3.11.0"
+    buildCommand: "pip install setuptools==69.5.1 && pip install -r requirements.txt"
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: GOOGLE_API_KEY
@@ -13,5 +14,3 @@ services:
         value: outputs
       - key: TEMP_DIR
         value: temp
-      - key: PYTHON_VERSION
-        value: 3.11.0
