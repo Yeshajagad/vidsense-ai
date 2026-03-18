@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { useEffect } from 'react'
 import Navbar from './components/Navbar.jsx'
 import Home from './pages/Home.jsx'
@@ -9,7 +9,7 @@ export default function App() {
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL
     if (!apiUrl) return
-    const ping = () => fetch(`${apiUrl}/`).catch(() => {})
+    const ping = () => fetch(apiUrl + '/').catch(() => {})
     ping()
     const id = setInterval(ping, 10 * 60 * 1000)
     return () => clearInterval(id)
