@@ -1,26 +1,14 @@
-from faster_whisper import WhisperModel
+import whisper_timestamped as whisper
 import os
 import subprocess
 from moviepy.editor import VideoFileClip, AudioFileClip
 from pydub import AudioSegment, generators
 
 def transcribe_video(input_path: str):
-    model = WhisperModel("base", device="cpu", compute_type="int8")
-    segments, info = model.transcribe(input_path, word_timestamps=True)
-    
-    result_segments = []
-    for seg in segments:
-        words = []
-        if hasattr(seg, 'words') and seg.words:
-            for w in seg.words:
-                words.append({"word": w.word, "start": w.start, "end": w.end})
-        result_segments.append({
-            "start": seg.start,
-            "end": seg.end,
-            "text": seg.text,
-            "words": words
-        })
-    return {"segments": result_segments}
+    model = whisper.load_model("base", device="cpu")
+    audio = whisper.load_audio(input_path)
+    result = whisper.transcribe(model, audio, language="en")
+    return result
 
 def add_captions(input_path: str, output_path: str):
     result = transcribe_video(input_path)
@@ -49,7 +37,7 @@ def censor_word(input_path: str, output_path: str, word: str):
     censor_times = []
     for seg in segments:
         for w in seg.get("words", []):
-            if word.lower() in w.get("word", "").lower():
+            if word.lower() in w.get("text", "").lower():
                 censor_times.append((w["start"], w["end"]))
 
     if not censor_times:
